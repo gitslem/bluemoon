@@ -130,56 +130,60 @@
     <div id="recaptcha-container"></div>
 
     <script type="module">
-        import { initAuth, signUpWithEmail, signInWithEmail, setupRecaptcha, sendPhoneOTP, verifyPhoneOTP, onAuthChange } from '/js/auth.js';
-        import firebaseConfig from '/js/firebase-config.js';
-
-        try {
-            initAuth();
-        } catch (err) {
-            console.error('Firebase init failed:', err);
-            document.getElementById('authError').textContent = 'Service temporarily unavailable. Please try again later.';
-            document.getElementById('authError').classList.add('show');
-        }
-
-        // Check if Firebase is configured with real credentials
-        const isConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY';
-        if (!isConfigured) {
-            document.getElementById('authError').textContent = 'Firebase is not configured. Please contact the site administrator.';
-            document.getElementById('authError').classList.add('show');
-        }
-
-        // Flag to prevent onAuthChange redirect during signup
+        // ── Dynamic Firebase loading — UI works even if Firebase is blocked ──
+        let authModule = null;
+        let firebaseLoaded = false;
         let isProcessingAuth = false;
 
-        onAuthChange((user) => {
-            if (user && !isProcessingAuth) {
-                window.location.href = '/dashboard.html';
-            }
-        });
+        // Load Firebase modules dynamically
+        async function loadAuth() {
+            try {
+                authModule = await import('/js/auth.js');
+                authModule.initAuth();
+                firebaseLoaded = true;
 
-        // Parse referral code from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const refCode = urlParams.get('ref');
-        if (refCode) {
-            document.getElementById('signupReferral').value = refCode.toUpperCase();
-            document.getElementById('phoneReferral').value = refCode.toUpperCase();
-            document.getElementById('referralNote').style.display = 'block';
+                // Check auth state
+                authModule.onAuthChange(function (user) {
+                    if (user && !isProcessingAuth) {
+                        window.location.href = '/dashboard.html';
+                    }
+                });
+
+                // Hide loading error if it was shown
+                hideError();
+                console.log('Auth loaded successfully');
+            } catch (err) {
+                console.error('Auth load failed:', err);
+                showError('Unable to connect to our servers. Please check your internet connection and refresh the page.');
+            }
         }
 
-        // Elements
-        const mainTabs = document.querySelectorAll('#mainTabs .auth-tab');
-        const emailSignupForm = document.getElementById('emailSignupForm');
-        const phoneSignupPanel = document.getElementById('phoneSignupPanel');
-        const signinForm = document.getElementById('signinForm');
-        const authFooter = document.getElementById('authFooter');
-        const authError = document.getElementById('authError');
+        // Start loading Firebase immediately
+        loadAuth();
 
-        // Active view tracking
-        let currentView = 'signup'; // 'signup' or 'signin'
-        let currentMethod = 'email'; // 'email' or 'phone'
+        // ── Parse referral code from URL ──
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            var refCode = urlParams.get('ref');
+            if (refCode) {
+                document.getElementById('signupReferral').value = refCode.toUpperCase();
+                document.getElementById('phoneReferral').value = refCode.toUpperCase();
+                document.getElementById('referralNote').style.display = 'block';
+            }
+        } catch (e) { /* ignore */ }
+
+        // ── Elements ──
+        var mainTabs = document.querySelectorAll('#mainTabs .auth-tab');
+        var emailSignupForm = document.getElementById('emailSignupForm');
+        var phoneSignupPanel = document.getElementById('phoneSignupPanel');
+        var signinForm = document.getElementById('signinForm');
+        var authFooter = document.getElementById('authFooter');
+        var authError = document.getElementById('authError');
+
+        var currentView = 'signup';
+        var currentMethod = 'email';
 
         function updateView() {
-            // Hide all forms
             emailSignupForm.classList.remove('active');
             emailSignupForm.style.display = 'none';
             phoneSignupPanel.classList.remove('active');
@@ -204,40 +208,34 @@
             hideError();
         }
 
-        // Main tabs (Sign Up / Sign In)
-        mainTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                mainTabs.forEach(t => t.classList.remove('active'));
+        // ── Tab switching (works without Firebase) ──
+        mainTabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                mainTabs.forEach(function (t) { t.classList.remove('active'); });
                 tab.classList.add('active');
                 currentView = tab.dataset.tab;
                 updateView();
             });
         });
 
-        // Method tabs (Email / Phone) — in both signup forms
-        document.querySelectorAll('[data-method]').forEach(tab => {
-            tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-method]').forEach(function (tab) {
+            tab.addEventListener('click', function () {
                 currentMethod = tab.dataset.method;
                 currentView = 'signup';
-                mainTabs.forEach(t => t.classList.remove('active'));
+                mainTabs.forEach(function (t) { t.classList.remove('active'); });
                 mainTabs[0].classList.add('active');
                 updateView();
             });
         });
 
         function bindFooterLinks() {
-            document.getElementById('switchToSignin')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                mainTabs[1].click();
-            });
-            document.getElementById('switchToSignup')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                mainTabs[0].click();
-            });
+            var switchIn = document.getElementById('switchToSignin');
+            if (switchIn) switchIn.addEventListener('click', function (e) { e.preventDefault(); mainTabs[1].click(); });
+            var switchUp = document.getElementById('switchToSignup');
+            if (switchUp) switchUp.addEventListener('click', function (e) { e.preventDefault(); mainTabs[0].click(); });
         }
         bindFooterLinks();
 
-        // Error display
         function showError(msg) {
             authError.textContent = msg;
             authError.classList.add('show');
@@ -255,17 +253,26 @@
             }
         }
 
+        function checkFirebase() {
+            if (!firebaseLoaded || !authModule) {
+                showError('Still connecting to servers. Please wait a moment and try again.');
+                return false;
+            }
+            return true;
+        }
+
         // ── Email Sign Up ──
-        emailSignupForm.addEventListener('submit', async (e) => {
+        emailSignupForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             hideError();
-            const btn = document.getElementById('emailSignupBtn');
+            if (!checkFirebase()) return;
 
-            const name = document.getElementById('signupName').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();
-            const phone = document.getElementById('signupPhone').value.trim();
-            const password = document.getElementById('signupPassword').value;
-            const referral = document.getElementById('signupReferral').value.trim().toUpperCase();
+            var btn = document.getElementById('emailSignupBtn');
+            var name = document.getElementById('signupName').value.trim();
+            var email = document.getElementById('signupEmail').value.trim();
+            var phone = document.getElementById('signupPhone').value.trim();
+            var password = document.getElementById('signupPassword').value;
+            var referral = document.getElementById('signupReferral').value.trim().toUpperCase();
 
             if (!name || !email || !password) {
                 showError('Please fill in all required fields.');
@@ -275,8 +282,7 @@
             setLoading(btn, true);
             isProcessingAuth = true;
             try {
-                await signUpWithEmail(email, password, name, phone, referral);
-                // All Firestore writes are done — safe to redirect
+                await authModule.signUpWithEmail(email, password, name, phone, referral);
                 window.location.href = '/dashboard.html';
             } catch (err) {
                 isProcessingAuth = false;
@@ -300,27 +306,23 @@
         });
 
         // ── Phone Sign Up — Send OTP ──
-        document.getElementById('sendOtpBtn').addEventListener('click', async () => {
+        document.getElementById('sendOtpBtn').addEventListener('click', async function () {
             hideError();
-            const phone = document.getElementById('phoneNumber').value.trim();
-            const name = document.getElementById('phoneName').value.trim();
-            if (!name) {
-                showError('Please enter your full name.');
-                return;
-            }
-            if (!phone) {
-                showError('Please enter your phone number (e.g. +2348012345678).');
-                return;
-            }
+            if (!checkFirebase()) return;
+
+            var phone = document.getElementById('phoneNumber').value.trim();
+            var name = document.getElementById('phoneName').value.trim();
+            if (!name) { showError('Please enter your full name.'); return; }
+            if (!phone) { showError('Please enter your phone number (e.g. +2348012345678).'); return; }
             if (!/^\+\d{10,15}$/.test(phone.replace(/\s/g, ''))) {
                 showError('Phone number must start with + followed by country code (e.g. +2348012345678).');
                 return;
             }
-            const btn = document.getElementById('sendOtpBtn');
+            var btn = document.getElementById('sendOtpBtn');
             setLoading(btn, true);
             try {
-                setupRecaptcha('recaptcha-container');
-                await sendPhoneOTP(phone.replace(/\s/g, ''));
+                authModule.setupRecaptcha('recaptcha-container');
+                await authModule.sendPhoneOTP(phone.replace(/\s/g, ''));
                 document.getElementById('phoneStep1').style.display = 'none';
                 document.getElementById('phoneStep2').style.display = 'block';
             } catch (err) {
@@ -330,20 +332,19 @@
         });
 
         // ── Phone Sign Up — Verify OTP ──
-        document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
+        document.getElementById('verifyOtpBtn').addEventListener('click', async function () {
             hideError();
-            const otp = document.getElementById('otpCode').value.trim();
-            const name = document.getElementById('phoneName').value.trim();
-            const referral = document.getElementById('phoneReferral').value.trim().toUpperCase();
-            if (!otp || otp.length < 6) {
-                showError('Please enter the 6-digit verification code.');
-                return;
-            }
-            const btn = document.getElementById('verifyOtpBtn');
+            if (!checkFirebase()) return;
+
+            var otp = document.getElementById('otpCode').value.trim();
+            var name = document.getElementById('phoneName').value.trim();
+            var referral = document.getElementById('phoneReferral').value.trim().toUpperCase();
+            if (!otp || otp.length < 6) { showError('Please enter the 6-digit verification code.'); return; }
+            var btn = document.getElementById('verifyOtpBtn');
             setLoading(btn, true);
             isProcessingAuth = true;
             try {
-                await verifyPhoneOTP(otp, name, referral);
+                await authModule.verifyPhoneOTP(otp, name, referral);
                 window.location.href = '/dashboard.html';
             } catch (err) {
                 isProcessingAuth = false;
@@ -353,21 +354,20 @@
         });
 
         // ── Sign In ──
-        signinForm.addEventListener('submit', async (e) => {
+        signinForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             hideError();
-            const email = document.getElementById('signinEmail').value.trim();
-            const password = document.getElementById('signinPassword').value;
-            const btn = document.getElementById('signinBtn');
+            if (!checkFirebase()) return;
 
-            if (!email || !password) {
-                showError('Please enter your email and password.');
-                return;
-            }
+            var email = document.getElementById('signinEmail').value.trim();
+            var password = document.getElementById('signinPassword').value;
+            var btn = document.getElementById('signinBtn');
+
+            if (!email || !password) { showError('Please enter your email and password.'); return; }
 
             setLoading(btn, true);
             try {
-                await signInWithEmail(email, password);
+                await authModule.signInWithEmail(email, password);
                 window.location.href = '/dashboard.html';
             } catch (err) {
                 if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
