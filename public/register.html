@@ -139,7 +139,7 @@
         async function loadAuth() {
             try {
                 authModule = await import('/js/auth.js');
-                authModule.initAuth();
+                await authModule.initAuth();
                 firebaseLoaded = true;
 
                 // Check auth state
