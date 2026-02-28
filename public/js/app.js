@@ -148,6 +148,101 @@ function initParticles() {
 }
 
 // ============================================
+// Promo Signup Form (Inline Referral Join)
+// ============================================
+
+function generateReferralCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'BM-';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+function initPromoForm() {
+  const form = document.getElementById('promoForm');
+  const successEl = document.getElementById('promoSuccess');
+  const errorEl = document.getElementById('promoError');
+  const refCodeDisplay = document.getElementById('promoRefCode');
+  if (!form || !successEl) return;
+
+  // Pre-fill referral code from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const refFromUrl = urlParams.get('ref');
+  if (refFromUrl) {
+    const refInput = document.getElementById('promoReferral');
+    if (refInput) refInput.value = refFromUrl.toUpperCase();
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (errorEl) errorEl.classList.remove('visible');
+
+    const name = document.getElementById('promoName').value.trim();
+    const phone = document.getElementById('promoPhone').value.trim();
+    const email = document.getElementById('promoEmail').value.trim();
+    const referral = document.getElementById('promoReferral').value.trim().toUpperCase();
+    const btn = document.getElementById('promoSubmitBtn');
+
+    if (!name) {
+      showPromoError('Please enter your full name.');
+      return;
+    }
+    if (!phone) {
+      showPromoError('Please enter your phone number.');
+      return;
+    }
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:currentColor;border-radius:50%;animation:spin 0.6s linear infinite;"></span> Joining...';
+    btn.disabled = true;
+
+    try {
+      const myRefCode = generateReferralCode();
+
+      if (isFirebaseReady()) {
+        // Save to Firestore promoSignups collection
+        const signupRef = doc(db, 'promoSignups', phone.replace(/\s/g, ''));
+        await setDoc(signupRef, {
+          name,
+          phone: phone.replace(/\s/g, ''),
+          email: email.toLowerCase() || '',
+          referralCode: myRefCode,
+          referredBy: referral || '',
+          source: 'homepage_promo',
+          createdAt: new Date().toISOString()
+        });
+
+        if (analytics) {
+          logEvent(analytics, 'promo_signup', { method: 'inline_form' });
+        }
+      } else {
+        console.log('Promo signup (demo mode):', { name, phone, email, referral });
+      }
+
+      // Show success
+      form.style.display = 'none';
+      if (refCodeDisplay) refCodeDisplay.textContent = myRefCode;
+      successEl.classList.add('visible');
+      trackEvent('promo_signup_complete', { has_referral: !!referral });
+    } catch (err) {
+      console.error('Promo signup error:', err);
+      showPromoError('Something went wrong. Please try again or contact us on WhatsApp.');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  });
+
+  function showPromoError(msg) {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('visible');
+    }
+  }
+}
+
+// ============================================
 // Notify Form
 // ============================================
 
@@ -256,6 +351,7 @@ function initClickTracking() {
 document.addEventListener('DOMContentLoaded', function () {
   initFirebase();
   initParticles();
+  initPromoForm();
   initNotifyForm();
   initHeaderScroll();
   initClickTracking();

@@ -26,6 +26,20 @@ service cloud.firestore {
       allow read, delete: if false;
     }
 
+    // ─── Promo Signups (inline referral program join) ───
+    match /promoSignups/{phoneId} {
+      allow create: if
+        request.resource.data.keys().hasAll(['name', 'phone', 'referralCode', 'createdAt']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 200 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() > 0 &&
+        request.resource.data.phone.size() <= 20;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // ─── Referral Codes (lookup table) ───
     // Any authenticated user can read (for referral code validation)
     // Created during signup alongside the user profile
