@@ -11,13 +11,13 @@
  */
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  apiKey: "AIzaSyBI2vkpcRZw2SyRZqWNV-MIknUMoVILUtU",
+  authDomain: "bluemoon-ng.firebaseapp.com",
+  projectId: "bluemoon-ng",
+  storageBucket: "bluemoon-ng.firebasestorage.app",
+  messagingSenderId: "982381307468",
+  appId: "1:982381307468:web:69c27c87f240d72e21f6e9",
+  measurementId: "G-H79QBGJKZ2"
 };
 
 export default firebaseConfig;
