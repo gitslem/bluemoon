@@ -190,7 +190,7 @@
 
     <script type="module">
         import { initAdmin } from '/js/admin.js';
-        initAdmin();
+        initAdmin().catch(err => console.error('Admin init failed:', err));
     </script>
 </body>
 </html>

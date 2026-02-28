@@ -3,11 +3,12 @@
  * User dashboard logic: referrals, earnings, payment requests, profile
  */
 
-import { initAuth, onAuthChange, getUserData, logOut, formatNaira, getRewardAmount, esc } from './auth.js';
-import { doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+import { initAuth, onAuthChange, getUserData, logOut, formatNaira, getRewardAmount, esc, getFirestoreMod } from './auth.js';
 
 let db, currentUser, userData;
 let unsubReferrals, unsubTransactions, unsubUserDoc, unsubNotifications, unsubPayments;
+// Firestore functions — populated after initAuth()
+let doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc;
 
 const NIGERIAN_BANKS = [
     'Access Bank', 'Citibank Nigeria', 'Ecobank Nigeria', 'Fidelity Bank',
@@ -19,9 +20,20 @@ const NIGERIAN_BANKS = [
     'Unity Bank', 'VFD Microfinance Bank', 'Wema Bank', 'Zenith Bank'
 ];
 
-export function initDashboard() {
-    const { db: fireDb } = initAuth();
+export async function initDashboard() {
+    const { db: fireDb } = await initAuth();
     db = fireDb;
+
+    // Get Firestore functions from the dynamically loaded module
+    const store = getFirestoreMod();
+    doc = store.doc;
+    updateDoc = store.updateDoc;
+    collection = store.collection;
+    query = store.query;
+    where = store.where;
+    orderBy = store.orderBy;
+    onSnapshot = store.onSnapshot;
+    addDoc = store.addDoc;
 
     onAuthChange(async (user) => {
         if (!user) {

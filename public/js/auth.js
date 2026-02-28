@@ -1,28 +1,43 @@
 /**
  * BlueMoon — Authentication Module
  * Handles user registration, login, and session management
+ *
+ * Uses DYNAMIC imports so this module loads even if Firebase CDN is slow/blocked.
+ * All Firebase functions are loaded inside initAuth() — nothing at the top level.
  */
-
-import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, query, collection, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
-import firebaseConfig from './firebase-config.js';
 
 let app, auth, db;
 
-export function initAuth() {
-    if (getApps().length === 0) {
-        app = initializeApp(firebaseConfig);
+// Store Firebase SDK references after dynamic loading
+let _appMod, _authMod, _storeMod;
+
+export async function initAuth() {
+    const configMod = await import('./firebase-config.js');
+    const config = configMod.default;
+
+    const [appMod, authMod, storeMod] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js'),
+        import('https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js')
+    ]);
+
+    _appMod = appMod;
+    _authMod = authMod;
+    _storeMod = storeMod;
+
+    if (appMod.getApps().length === 0) {
+        app = appMod.initializeApp(config);
     } else {
-        app = getApps()[0];
+        app = appMod.getApps()[0];
     }
-    auth = getAuth(app);
-    db = getFirestore(app);
+    auth = authMod.getAuth(app);
+    db = storeMod.getFirestore(app);
     return { app, auth, db };
 }
 
 export function getAuthInstance() { return auth; }
 export function getDbInstance() { return db; }
+export function getFirestoreMod() { return _storeMod; }
 
 /** Escape HTML to prevent XSS when inserting user data into innerHTML */
 export function esc(str) {
@@ -45,7 +60,7 @@ export function generateReferralCode() {
 async function ensureUniqueReferralCode() {
     for (let i = 0; i < 10; i++) {
         const code = generateReferralCode();
-        const snap = await getDoc(doc(db, 'referralCodes', code));
+        const snap = await _storeMod.getDoc(_storeMod.doc(db, 'referralCodes', code));
         if (!snap.exists()) return code;
     }
     // Fallback: append timestamp fragment to guarantee uniqueness
@@ -53,7 +68,7 @@ async function ensureUniqueReferralCode() {
 }
 
 export async function signUpWithEmail(email, password, displayName, phone, referralCode) {
-    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    const userCred = await _authMod.createUserWithEmailAndPassword(auth, email, password);
     const uid = userCred.user.uid;
     const myReferralCode = await ensureUniqueReferralCode();
 
@@ -76,18 +91,18 @@ export async function signUpWithEmail(email, password, displayName, phone, refer
     };
 
     // Write user profile and referral code (both must succeed)
-    await setDoc(doc(db, 'users', uid), userData);
-    await setDoc(doc(db, 'referralCodes', myReferralCode), {
+    await _storeMod.setDoc(_storeMod.doc(db, 'users', uid), userData);
+    await _storeMod.setDoc(_storeMod.doc(db, 'referralCodes', myReferralCode), {
         uid,
         displayName: displayName || ''
     });
 
     // If user was referred, look up referrer via referralCodes collection
     if (referralCode) {
-        const refCodeDoc = await getDoc(doc(db, 'referralCodes', referralCode));
+        const refCodeDoc = await _storeMod.getDoc(_storeMod.doc(db, 'referralCodes', referralCode));
         if (refCodeDoc.exists()) {
             const referrer = refCodeDoc.data();
-            await setDoc(doc(db, 'referrals', `${referrer.uid}_${uid}`), {
+            await _storeMod.setDoc(_storeMod.doc(db, 'referrals', `${referrer.uid}_${uid}`), {
                 referrerId: referrer.uid,
                 referrerName: referrer.displayName,
                 referredUserId: uid,
@@ -111,13 +126,13 @@ export async function signUpWithEmail(email, password, displayName, phone, refer
 }
 
 export async function signInWithEmail(email, password) {
-    const userCred = await signInWithEmailAndPassword(auth, email, password);
+    const userCred = await _authMod.signInWithEmailAndPassword(auth, email, password);
     return userCred.user;
 }
 
 export function setupRecaptcha(buttonId) {
     if (window.recaptchaVerifier) return window.recaptchaVerifier;
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
+    window.recaptchaVerifier = new _authMod.RecaptchaVerifier(auth, buttonId, {
         size: 'invisible',
         callback: () => {}
     });
@@ -126,7 +141,7 @@ export function setupRecaptcha(buttonId) {
 
 export async function sendPhoneOTP(phoneNumber) {
     const appVerifier = window.recaptchaVerifier;
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+    const confirmationResult = await _authMod.signInWithPhoneNumber(auth, phoneNumber, appVerifier);
     window.confirmationResult = confirmationResult;
     return confirmationResult;
 }
@@ -134,7 +149,7 @@ export async function sendPhoneOTP(phoneNumber) {
 export async function verifyPhoneOTP(otp, displayName, referralCode) {
     const result = await window.confirmationResult.confirm(otp);
     const uid = result.user.uid;
-    const userDoc = await getDoc(doc(db, 'users', uid));
+    const userDoc = await _storeMod.getDoc(_storeMod.doc(db, 'users', uid));
 
     if (!userDoc.exists()) {
         const myReferralCode = await ensureUniqueReferralCode();
@@ -155,17 +170,17 @@ export async function verifyPhoneOTP(otp, displayName, referralCode) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        await setDoc(doc(db, 'users', uid), userData);
-        await setDoc(doc(db, 'referralCodes', myReferralCode), {
+        await _storeMod.setDoc(_storeMod.doc(db, 'users', uid), userData);
+        await _storeMod.setDoc(_storeMod.doc(db, 'referralCodes', myReferralCode), {
             uid,
             displayName: displayName || ''
         });
 
         if (referralCode) {
-            const refCodeDoc = await getDoc(doc(db, 'referralCodes', referralCode));
+            const refCodeDoc = await _storeMod.getDoc(_storeMod.doc(db, 'referralCodes', referralCode));
             if (refCodeDoc.exists()) {
                 const referrer = refCodeDoc.data();
-                await setDoc(doc(db, 'referrals', `${referrer.uid}_${uid}`), {
+                await _storeMod.setDoc(_storeMod.doc(db, 'referrals', `${referrer.uid}_${uid}`), {
                     referrerId: referrer.uid,
                     referrerName: referrer.displayName,
                     referredUserId: uid,
@@ -190,16 +205,16 @@ export async function verifyPhoneOTP(otp, displayName, referralCode) {
 }
 
 export async function logOut() {
-    await firebaseSignOut(auth);
+    await _authMod.signOut(auth);
     window.location.href = '/register.html';
 }
 
 export function onAuthChange(callback) {
-    return onAuthStateChanged(auth, callback);
+    return _authMod.onAuthStateChanged(auth, callback);
 }
 
 export async function getUserData(uid) {
-    const snap = await getDoc(doc(db, 'users', uid));
+    const snap = await _storeMod.getDoc(_storeMod.doc(db, 'users', uid));
     return snap.exists() ? snap.data() : null;
 }
 

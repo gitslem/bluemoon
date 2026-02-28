@@ -3,14 +3,28 @@
  * Manage users, referrals, award credits, process payments
  */
 
-import { initAuth, onAuthChange, getUserData, checkIsAdmin, logOut, formatNaira, getRewardAmount, getMilestoneBonus, esc } from './auth.js';
-import { doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, getDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+import { initAuth, onAuthChange, getUserData, checkIsAdmin, logOut, formatNaira, getRewardAmount, getMilestoneBonus, esc, getFirestoreMod } from './auth.js';
+
+// Firestore functions populated after initAuth()
+let doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, getDoc;
 
 let db, currentUser;
 
-export function initAdmin() {
-    const { db: fireDb } = initAuth();
+export async function initAdmin() {
+    const { db: fireDb } = await initAuth();
     db = fireDb;
+
+    const store = getFirestoreMod();
+    doc = store.doc;
+    updateDoc = store.updateDoc;
+    collection = store.collection;
+    query = store.query;
+    where = store.where;
+    orderBy = store.orderBy;
+    onSnapshot = store.onSnapshot;
+    addDoc = store.addDoc;
+    getDocs = store.getDocs;
+    getDoc = store.getDoc;
 
     onAuthChange(async (user) => {
         if (!user) { window.location.href = '/register.html'; return; }
