@@ -3,7 +3,7 @@
  * Handles user registration, login, and session management
  */
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, query, collection, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 import firebaseConfig from './firebase-config.js';
@@ -11,7 +11,11 @@ import firebaseConfig from './firebase-config.js';
 let app, auth, db;
 
 export function initAuth() {
-    app = initializeApp(firebaseConfig);
+    if (getApps().length === 0) {
+        app = initializeApp(firebaseConfig);
+    } else {
+        app = getApps()[0];
+    }
     auth = getAuth(app);
     db = getFirestore(app);
     return { app, auth, db };
@@ -19,6 +23,11 @@ export function initAuth() {
 
 export function getAuthInstance() { return auth; }
 export function getDbInstance() { return db; }
+
+/** Escape HTML to prevent XSS when inserting user data into innerHTML */
+export function esc(str) {
+    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export function generateReferralCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -29,15 +38,18 @@ export function generateReferralCode() {
     return code;
 }
 
+/**
+ * Check referralCodes collection (not users) — any authenticated user can read this.
+ * Falls back to a timestamped code if uniqueness check fails repeatedly.
+ */
 async function ensureUniqueReferralCode() {
-    let code, exists = true;
-    while (exists) {
-        code = generateReferralCode();
-        const q = query(collection(db, 'users'), where('referralCode', '==', code));
-        const snap = await getDocs(q);
-        exists = !snap.empty;
+    for (let i = 0; i < 10; i++) {
+        const code = generateReferralCode();
+        const snap = await getDoc(doc(db, 'referralCodes', code));
+        if (!snap.exists()) return code;
     }
-    return code;
+    // Fallback: append timestamp fragment to guarantee uniqueness
+    return generateReferralCode() + Date.now().toString(36).slice(-3).toUpperCase();
 }
 
 export async function signUpWithEmail(email, password, displayName, phone, referralCode) {
@@ -63,16 +75,21 @@ export async function signUpWithEmail(email, password, displayName, phone, refer
         updatedAt: new Date().toISOString()
     };
 
+    // Write user profile and referral code (both must succeed)
     await setDoc(doc(db, 'users', uid), userData);
+    await setDoc(doc(db, 'referralCodes', myReferralCode), {
+        uid,
+        displayName: displayName || ''
+    });
 
+    // If user was referred, look up referrer via referralCodes collection
     if (referralCode) {
-        const q = query(collection(db, 'users'), where('referralCode', '==', referralCode));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-            const referrerDoc = snap.docs[0];
-            await setDoc(doc(db, 'referrals', `${referrerDoc.id}_${uid}`), {
-                referrerId: referrerDoc.id,
-                referrerName: referrerDoc.data().displayName,
+        const refCodeDoc = await getDoc(doc(db, 'referralCodes', referralCode));
+        if (refCodeDoc.exists()) {
+            const referrer = refCodeDoc.data();
+            await setDoc(doc(db, 'referrals', `${referrer.uid}_${uid}`), {
+                referrerId: referrer.uid,
+                referrerName: referrer.displayName,
                 referredUserId: uid,
                 referredName: displayName,
                 referredEmail: email.toLowerCase().trim(),
@@ -99,6 +116,7 @@ export async function signInWithEmail(email, password) {
 }
 
 export function setupRecaptcha(buttonId) {
+    if (window.recaptchaVerifier) return window.recaptchaVerifier;
     window.recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
         size: 'invisible',
         callback: () => {}
@@ -138,15 +156,18 @@ export async function verifyPhoneOTP(otp, displayName, referralCode) {
             updatedAt: new Date().toISOString()
         };
         await setDoc(doc(db, 'users', uid), userData);
+        await setDoc(doc(db, 'referralCodes', myReferralCode), {
+            uid,
+            displayName: displayName || ''
+        });
 
         if (referralCode) {
-            const q = query(collection(db, 'users'), where('referralCode', '==', referralCode));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const referrerDoc = snap.docs[0];
-                await setDoc(doc(db, 'referrals', `${referrerDoc.id}_${uid}`), {
-                    referrerId: referrerDoc.id,
-                    referrerName: referrerDoc.data().displayName,
+            const refCodeDoc = await getDoc(doc(db, 'referralCodes', referralCode));
+            if (refCodeDoc.exists()) {
+                const referrer = refCodeDoc.data();
+                await setDoc(doc(db, 'referrals', `${referrer.uid}_${uid}`), {
+                    referrerId: referrer.uid,
+                    referrerName: referrer.displayName,
                     referredUserId: uid,
                     referredName: displayName,
                     referredEmail: '',
