@@ -12,8 +12,7 @@ let app, auth, db;
 let _appMod, _authMod, _storeMod;
 
 export async function initAuth() {
-    const configMod = await import('./firebase-config.js');
-    const config = configMod.default;
+    const { firebaseConfig: config } = await import('./firebase-config.js');
 
     const [appMod, authMod, storeMod] = await Promise.all([
         import('https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js'),

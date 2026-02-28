@@ -14,8 +14,7 @@ let firebaseReady = false;
 
 async function loadFirebase() {
   try {
-    const configModule = await import('./firebase-config.js');
-    const config = configModule.default;
+    const { firebaseConfig: config } = await import('./firebase-config.js');
 
     if (!config || !config.apiKey || config.apiKey === 'YOUR_API_KEY') {
       console.warn('Firebase not configured.');
