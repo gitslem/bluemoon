@@ -79,6 +79,14 @@
         "destination": "/admin.html"
       },
       {
+        "source": "/about.html",
+        "destination": "/about.html"
+      },
+      {
+        "source": "/privacy.html",
+        "destination": "/privacy.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

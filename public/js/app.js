@@ -21,16 +21,13 @@ function initFirebase() {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
 
-    // Analytics — only initialize if measurementId is configured
     if (firebaseConfig.measurementId && firebaseConfig.measurementId !== 'YOUR_MEASUREMENT_ID') {
       analytics = getAnalytics(app);
       logEvent(analytics, 'page_view', {
-        page_title: 'Coming Soon',
+        page_title: document.title,
         page_location: window.location.href
       });
     }
-
-    console.log('Firebase initialized successfully');
   } catch (error) {
     console.warn('Firebase initialization skipped:', error.message);
   }
@@ -46,16 +43,12 @@ function isFirebaseReady() {
 
 async function saveSubscriber(email) {
   if (!isFirebaseReady()) {
-    // Fallback: log to console when Firebase isn't configured yet
     console.log('Subscriber (demo mode):', email);
     return { success: true, demo: true };
   }
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
-
-    // Use email as document ID — setDoc is idempotent so duplicates
-    // simply overwrite, avoiding the need for read access.
     const subscriberRef = doc(db, 'subscribers', normalizedEmail);
     await setDoc(subscriberRef, {
       email: normalizedEmail,
@@ -64,15 +57,8 @@ async function saveSubscriber(email) {
       userAgent: navigator.userAgent
     });
 
-    // Track signup event
     if (analytics) {
-      logEvent(analytics, 'sign_up', {
-        method: 'email_waitlist'
-      });
-      logEvent(analytics, 'generate_lead', {
-        currency: 'USD',
-        value: 0
-      });
+      logEvent(analytics, 'sign_up', { method: 'email_waitlist' });
     }
 
     return { success: true };
@@ -162,7 +148,7 @@ function initParticles() {
 }
 
 // ============================================
-// Notify Form — Firestore Integration
+// Notify Form
 // ============================================
 
 function initNotifyForm() {
@@ -180,12 +166,10 @@ function initNotifyForm() {
 
     const email = emailInput.value.trim();
 
-    // Hide any previous error
     if (errorEl) errorEl.classList.remove('visible');
 
-    // Show loading state
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Saving...</span>';
+    btn.innerHTML = '<span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:currentColor;border-radius:50%;animation:spin 0.6s linear infinite;"></span> Saving...';
     btn.disabled = true;
 
     const result = await saveSubscriber(email);
@@ -210,7 +194,7 @@ function initNotifyForm() {
 // ============================================
 
 function initHeaderScroll() {
-  const header = document.querySelector('.header');
+  const header = document.getElementById('siteHeader');
   if (!header) return;
 
   let ticking = false;
@@ -232,62 +216,41 @@ function initHeaderScroll() {
 }
 
 // ============================================
-// Phone Float Animation
-// ============================================
-
-function initPhoneAnimations() {
-  const phones = document.querySelectorAll('.phone');
-  if (!phones.length) return;
-
-  phones.forEach((phone) => {
-    let startTime = null;
-    const floatSpeed = 0.0006 + Math.random() * 0.0004;
-    const floatAmplitude = 5 + Math.random() * 5;
-
-    function floatAnimate(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const y = Math.sin((timestamp - startTime) * floatSpeed) * floatAmplitude;
-      phone.style.marginTop = `${-y}px`;
-      phone.style.marginBottom = `${y}px`;
-      requestAnimationFrame(floatAnimate);
-    }
-
-    requestAnimationFrame(floatAnimate);
-  });
-}
-
-// ============================================
-// CTA Button Tracking
+// Click Tracking
 // ============================================
 
 function initClickTracking() {
-  // Track App Store button clicks
   document.querySelectorAll('.store-btn').forEach((btn) => {
-    btn.addEventListener('click', function (e) {
+    btn.addEventListener('click', function () {
       const store = this.querySelector('.store-btn-large')?.textContent || 'unknown';
-      trackEvent('store_button_click', { store: store });
+      trackEvent('store_button_click', { store });
     });
   });
 
-  // Track social link clicks
   document.querySelectorAll('.footer-social a').forEach((link) => {
     link.addEventListener('click', function () {
       const platform = this.getAttribute('aria-label') || 'unknown';
-      trackEvent('social_click', { platform: platform });
+      trackEvent('social_click', { platform });
     });
   });
 
-  // Track "Get Notified" CTA header button
   const headerCta = document.querySelector('.header-cta');
   if (headerCta) {
     headerCta.addEventListener('click', function () {
       trackEvent('cta_click', { location: 'header' });
     });
   }
+
+  const whatsappFab = document.querySelector('.whatsapp-fab');
+  if (whatsappFab) {
+    whatsappFab.addEventListener('click', function () {
+      trackEvent('whatsapp_click', { location: 'fab' });
+    });
+  }
 }
 
 // ============================================
-// Initialize Everything
+// Initialize
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -295,6 +258,5 @@ document.addEventListener('DOMContentLoaded', function () {
   initParticles();
   initNotifyForm();
   initHeaderScroll();
-  initPhoneAnimations();
   initClickTracking();
 });
