@@ -6,9 +6,24 @@
   <title>BlueMoon — Coming Soon | Where Fashion Meets Function</title>
   <meta name="description" content="BlueMoon is the marketplace connecting you with verified tailors, dry cleaners, fashion designers, and cloth brands. Coming soon to iOS and Android.">
   <meta name="theme-color" content="#070B1A">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="BlueMoon — Coming Soon">
+  <meta property="og:description" content="The marketplace for tailors, dry cleaners, fashion designers, and cloth brands. Where Fashion Meets Function.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BlueMoon — Coming Soon">
+  <meta name="twitter:description" content="The marketplace for tailors, dry cleaners, fashion designers, and cloth brands.">
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 </head>
@@ -287,6 +302,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#F5A524" opacity="0.2"/><path d="M8 12.5l2.5 2.5 5-5" stroke="#F5A524" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span>You're on the list! We'll notify you at launch.</span>
           </div>
+          <div class="notify-error" id="notifyError"></div>
         </div>
       </div>
     </section>
@@ -332,6 +348,7 @@
     </div>
   </footer>
 
-  <script src="js/main.js"></script>
+  <!-- Firebase-Integrated App Script (ES Module) -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

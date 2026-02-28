@@ -794,6 +794,36 @@ button {
   animation: slide-up 0.4s ease;
 }
 
+/* Error Message */
+.notify-error {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #f87171;
+}
+
+.notify-error.visible {
+  display: flex;
+  animation: slide-up 0.4s ease;
+}
+
+/* Loading Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
 /* --- Footer --- */
 .footer {
   position: relative;

@@ -4,3 +4,9 @@ Thumbs.db
 node_modules/
 .env
 .env.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

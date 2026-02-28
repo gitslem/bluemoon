@@ -1,0 +1,15 @@
+{
+  "name": "bluemoon-coming-soon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BlueMoon — Coming Soon landing page with Firebase Hosting and Firestore",
+  "scripts": {
+    "dev": "firebase emulators:start",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
