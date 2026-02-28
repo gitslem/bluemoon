@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>About — BlueMoon</title>
   <meta name="description" content="Learn about BlueMoon — the platform connecting you with verified tailors, dry cleaners, premium fabrics, and ready-made outfits across Nigeria.">
-  <meta name="theme-color" content="#070B1A">
+  <meta name="theme-color" content="#050816">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,17 +20,20 @@
   </div>
 
   <!-- Header -->
-  <header class="header">
+  <header class="header" id="siteHeader">
     <div class="container">
       <a href="/" class="logo">
         <svg class="logo-icon" viewBox="0 0 48 48" width="36" height="36">
           <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse"><stop stop-color="#F5A524"/><stop offset="1" stop-color="#E8780A"/></linearGradient></defs>
           <polygon points="24,2 44,13 44,35 24,46 4,35 4,13" fill="url(#logoGrad)"/>
-          <text x="24" y="30" text-anchor="middle" fill="#070B1A" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="18" letter-spacing="1">BM</text>
+          <text x="24" y="30" text-anchor="middle" fill="#050816" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="18" letter-spacing="1">BM</text>
         </svg>
         <span class="logo-text">BlueMoon</span>
       </a>
-      <nav class="header-nav">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="header-nav" id="headerNav">
         <a href="/" class="nav-link">Home</a>
         <a href="/find-us.html" class="nav-link">Find Us</a>
         <a href="/#referral" class="header-cta">Join Referral Program</a>
@@ -41,6 +44,7 @@
   <main>
     <section class="page-hero fade-up">
       <div class="container">
+        <div class="section-tag">About Us</div>
         <h1>About <span class="title-accent">BlueMoon</span></h1>
         <p>Where Fashion Meets Function — connecting you with the best tailors, dry cleaners, and fabric vendors across Nigeria.</p>
       </div>
@@ -64,13 +68,37 @@
       <p>To become Nigeria's most trusted platform for fashion services and garment care, empowering local artisans and service providers while delivering exceptional experiences to our customers.</p>
 
       <h2>Why Choose BlueMoon?</h2>
-      <ul>
-        <li><strong>Verified Providers</strong> — Every tailor, designer, and vendor on our platform goes through a verification process to ensure quality and reliability.</li>
-        <li><strong>Transparent Pricing</strong> — No hidden charges. See prices upfront before you commit to any service.</li>
-        <li><strong>Secure Payments</strong> — Your transactions are protected with industry-standard security measures.</li>
-        <li><strong>Customer Support</strong> — Our dedicated team is always ready to help resolve any issues and ensure your satisfaction.</li>
-        <li><strong>Referral Rewards</strong> — Earn up to &#8358;3,000 for every friend you refer to BlueMoon. Your friends get &#8358;500 bonus too!</li>
-      </ul>
+
+      <div class="values-grid">
+        <div class="value-card">
+          <div class="value-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h4>Verified Providers</h4>
+          <p>Every tailor, designer, and vendor goes through a verification process to ensure quality and reliability.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <h4>Transparent Pricing</h4>
+          <p>No hidden charges. See prices upfront before you commit to any service.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <h4>Secure Payments</h4>
+          <p>Your transactions are protected with industry-standard security measures.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h4>Customer Support</h4>
+          <p>Our dedicated team is always ready to help resolve any issues and ensure your satisfaction.</p>
+        </div>
+      </div>
 
       <div class="contact-card">
         <h3>Get in Touch</h3>
@@ -113,5 +141,31 @@
       </div>
     </div>
   </footer>
+
+  <script>
+    // Mobile menu & header scroll for sub-pages
+    (function() {
+      var toggle = document.getElementById('menuToggle');
+      var nav = document.getElementById('headerNav');
+      var header = document.getElementById('siteHeader');
+      if (toggle && nav) {
+        toggle.addEventListener('click', function() {
+          toggle.classList.toggle('active');
+          nav.classList.toggle('open');
+        });
+        nav.querySelectorAll('a').forEach(function(link) {
+          link.addEventListener('click', function() {
+            toggle.classList.remove('active');
+            nav.classList.remove('open');
+          });
+        });
+      }
+      if (header) {
+        window.addEventListener('scroll', function() {
+          header.classList.toggle('scrolled', window.scrollY > 50);
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

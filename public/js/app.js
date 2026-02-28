@@ -183,7 +183,6 @@ function initNotifyForm() {
     btn.disabled = true;
 
     // Try to save to Firebase
-    let saved = false;
     try {
       if (firebaseReady && db && window._fbDoc && window._fbSetDoc) {
         const normalizedEmail = email.toLowerCase().trim();
@@ -194,7 +193,6 @@ function initNotifyForm() {
           source: 'coming_soon_page',
           userAgent: navigator.userAgent
         });
-        saved = true;
       }
     } catch (err) {
       console.warn('Subscriber save failed:', err.message);
@@ -284,21 +282,69 @@ function initHeaderScroll() {
   const header = document.getElementById('siteHeader');
   if (!header) return;
 
-  let ticking = false;
+  var ticking = false;
   window.addEventListener('scroll', function () {
     if (!ticking) {
       requestAnimationFrame(function () {
-        if (window.scrollY > 50) {
-          header.style.background = 'rgba(7, 11, 26, 0.95)';
-          header.style.boxShadow = '0 4px 30px rgba(0, 0, 0, 0.3)';
-        } else {
-          header.style.background = 'rgba(7, 11, 26, 0.7)';
-          header.style.boxShadow = 'none';
-        }
+        header.classList.toggle('scrolled', window.scrollY > 50);
         ticking = false;
       });
       ticking = true;
     }
+  });
+}
+
+// ============================================
+// Mobile Menu
+// ============================================
+
+function initMobileMenu() {
+  var toggle = document.getElementById('menuToggle');
+  var nav = document.getElementById('headerNav');
+  if (!toggle || !nav) return;
+
+  toggle.addEventListener('click', function () {
+    toggle.classList.toggle('active');
+    nav.classList.toggle('open');
+  });
+
+  // Close menu when clicking a nav link
+  nav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      toggle.classList.remove('active');
+      nav.classList.remove('open');
+    });
+  });
+}
+
+// ============================================
+// Scroll Reveal (Intersection Observer)
+// ============================================
+
+function initScrollReveal() {
+  var reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: just show everything
+    reveals.forEach(function (el) { el.classList.add('visible'); });
+    return;
+  }
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  reveals.forEach(function (el) {
+    observer.observe(el);
   });
 }
 
@@ -345,6 +391,8 @@ document.addEventListener('DOMContentLoaded', function () {
   initPromoForm();
   initNotifyForm();
   initHeaderScroll();
+  initMobileMenu();
+  initScrollReveal();
   initClickTracking();
 
   // 2. Load Firebase in the background (non-blocking)
