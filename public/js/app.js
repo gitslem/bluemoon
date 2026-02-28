@@ -100,46 +100,44 @@ function initPromoForm() {
     hidePromoError();
 
     const name = (document.getElementById('promoName').value || '').trim();
-    const phone = (document.getElementById('promoPhone').value || '').trim();
     const email = (document.getElementById('promoEmail').value || '').trim();
+    const password = (document.getElementById('promoPassword').value || '');
     const referral = (document.getElementById('promoReferral').value || '').trim().toUpperCase();
     const btn = document.getElementById('promoSubmitBtn');
 
     if (!name) { showPromoError('Please enter your full name.'); return; }
-    if (!phone) { showPromoError('Please enter your phone number.'); return; }
+    if (!email) { showPromoError('Please enter your email address.'); return; }
+    if (!password || password.length < 6) { showPromoError('Password must be at least 6 characters.'); return; }
 
     // Show loading state
     const originalHTML = btn.innerHTML;
     btn.innerHTML = '<span class="spinner"></span> Joining...';
     btn.disabled = true;
 
-    // Generate referral code
-    const myRefCode = generateReferralCode();
-
-    // Try to save to Firebase (but don't block on it)
+    // Create a real Firebase Auth account
     try {
-      if (firebaseReady && db && window._fbDoc && window._fbSetDoc) {
-        const signupRef = window._fbDoc(db, 'promoSignups', phone.replace(/\s/g, ''));
-        await window._fbSetDoc(signupRef, {
-          name: name,
-          phone: phone.replace(/\s/g, ''),
-          email: email ? email.toLowerCase() : '',
-          referralCode: myRefCode,
-          referredBy: referral || '',
-          source: 'homepage_promo',
-          createdAt: new Date().toISOString()
-        });
-      }
-    } catch (err) {
-      // Firebase save failed — that's OK, user still gets their code
-      console.warn('Firebase save failed:', err.message);
-    }
+      const authModule = await import('./auth.js');
+      await authModule.initAuth();
+      const result = await authModule.signUpWithEmail(email, password, name, '', referral);
 
-    // Always show success — user gets their referral code regardless
-    form.style.display = 'none';
-    if (refCodeDisplay) refCodeDisplay.textContent = myRefCode;
-    successEl.classList.add('visible');
-    trackEvent('promo_signup_complete', { has_referral: !!referral });
+      // Show success with their referral code
+      form.style.display = 'none';
+      if (refCodeDisplay) refCodeDisplay.textContent = result.referralCode;
+      successEl.classList.add('visible');
+      trackEvent('promo_signup_complete', { has_referral: !!referral });
+    } catch (err) {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+      if (err.code === 'auth/email-already-in-use') {
+        showPromoError('This email is already registered. Please sign in from the registration page.');
+      } else if (err.code === 'auth/weak-password') {
+        showPromoError('Password must be at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        showPromoError('Please enter a valid email address.');
+      } else {
+        showPromoError(err.message || 'Sign up failed. Please try again.');
+      }
+    }
   });
 
   function showPromoError(msg) {
