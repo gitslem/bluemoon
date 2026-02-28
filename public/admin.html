@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueMoon — Admin Panel</title>
+    <meta name="theme-color" content="#070B1A">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+    <!-- Loading -->
+    <div id="pageLoading" class="page-loading">
+        <span class="spinner"></span> Loading admin panel...
+    </div>
+
+    <!-- App Layout -->
+    <div id="appContent" style="display:none;">
+        <!-- Top Nav -->
+        <nav class="topnav">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="/" class="topnav-logo">
+                    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#F5A524" stroke-width="2.5"/><path d="M13 20c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7" stroke="#F5A524" stroke-width="2.5" stroke-linecap="round"/><circle cx="20" cy="20" r="2.5" fill="#F5A524"/></svg>
+                    BlueMoon <span style="color:var(--accent);font-size:0.75rem;margin-left:8px;">ADMIN</span>
+                </a>
+            </div>
+            <div class="topnav-right">
+                <a href="/dashboard.html" class="topnav-btn">Dashboard</a>
+                <button class="topnav-btn" id="logoutTopBtn">Sign Out</button>
+            </div>
+        </nav>
+
+        <div class="app-layout">
+            <!-- Sidebar -->
+            <div class="sidebar-overlay"></div>
+            <aside class="sidebar">
+                <ul class="sidebar-nav">
+                    <li><a href="#" data-section="sectionStats" class="active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                        Overview
+                    </a></li>
+                    <li><a href="#" data-section="sectionUsers">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        Users
+                    </a></li>
+                    <li><a href="#" data-section="sectionReferrals">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Referrals
+                    </a></li>
+                    <li><a href="#" data-section="sectionPayments">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        Payments
+                    </a></li>
+                    <li><a href="#" id="logoutBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Sign Out
+                    </a></li>
+                </ul>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+
+                <!-- STATS -->
+                <div id="sectionStats" class="section active">
+                    <h1 class="page-title">Admin Overview</h1>
+                    <p class="page-subtitle">BlueMoon Referral Program statistics</p>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Users</div>
+                            <div class="stat-card-value" id="statTotalUsers">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Referrals</div>
+                            <div class="stat-card-value" id="statTotalReferrals">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Qualified Referrals</div>
+                            <div class="stat-card-value accent" id="statQualifiedReferrals">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Pending Payments</div>
+                            <div class="stat-card-value" id="statPendingPayments" style="color:var(--warning);">0</div>
+                        </div>
+                    </div>
+
+                    <div class="section-card" style="background:var(--accent-light);border-color:var(--border-accent);">
+                        <h3 style="font-size:0.95rem;color:var(--accent);margin-bottom:12px;">Admin Workflow</h3>
+                        <ol style="color:var(--text-secondary);font-size:0.85rem;line-height:2;padding-left:20px;">
+                            <li>Go to <strong>Referrals</strong> tab to see all referral relationships</li>
+                            <li>When a referred person uses a BlueMoon service, click <strong>"Mark Qualified"</strong> and enter the service name</li>
+                            <li>This triggers a ₦500 welcome bonus for the referred user</li>
+                            <li>Then click <strong>"Award Credit"</strong> to credit the referrer (₦2,000 or ₦3,000 based on tier)</li>
+                            <li>Go to <strong>Payments</strong> to approve or reject withdrawal requests</li>
+                            <li>Users see all updates in real-time on their dashboard</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- USERS -->
+                <div id="sectionUsers" class="section">
+                    <h1 class="page-title">Users</h1>
+                    <p class="page-subtitle">All registered users in the referral program</p>
+
+                    <div class="section-card">
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Contact</th>
+                                        <th>Referral Code</th>
+                                        <th>Referrals</th>
+                                        <th>Earnings</th>
+                                        <th>Balance</th>
+                                        <th>Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REFERRALS -->
+                <div id="sectionReferrals" class="section">
+                    <h1 class="page-title">Referrals</h1>
+                    <p class="page-subtitle">Manage all referral relationships and award credits</p>
+
+                    <div class="section-card">
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Referrer</th>
+                                        <th>Referred</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Service</th>
+                                        <th>Reward</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="referralsTableBody">
+                                    <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAYMENTS -->
+                <div id="sectionPayments" class="section">
+                    <h1 class="page-title">Payment Requests</h1>
+                    <p class="page-subtitle">Review and process user withdrawal requests</p>
+
+                    <div class="section-card">
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Bank</th>
+                                        <th>Account #</th>
+                                        <th>Account Name</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentsTableBody">
+                                    <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initAdmin } from '/js/admin.js';
+        initAdmin();
+    </script>
+</body>
+</html>

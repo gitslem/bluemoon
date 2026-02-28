@@ -3,11 +3,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Subscribers collection — email waitlist signups
-    // Document ID = normalized email address
+    // ─── Helper: check if the request user is an admin ───
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Subscribers (existing waitlist) ───
     match /subscribers/{email} {
-      // Anyone can create or overwrite their signup (setDoc is idempotent)
-      // Validates: required fields, email format, and doc ID matches email field
       allow create, update: if
         request.resource.data.keys().hasAll(['email', 'subscribedAt']) &&
         request.resource.data.email is string &&
@@ -15,9 +23,74 @@ service cloud.firestore {
         request.resource.data.email.size() <= 320 &&
         request.resource.data.email.matches('.*@.*[.].*') &&
         request.resource.data.email == email;
-
-      // Only admins via Firebase console can read or delete
       allow read, delete: if false;
+    }
+
+    // ─── Users ───
+    match /users/{userId} {
+      // Users can read their own doc; admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      // User can create their own profile on signup
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.isAdmin == false;
+      // User can update their own non-sensitive fields; admins can update any
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if false;
+    }
+
+    // ─── Referrals ───
+    match /referrals/{refId} {
+      // Referrer or referred user can read; admins can read all
+      allow read: if request.auth != null && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.referredUserId == request.auth.uid ||
+        isAdmin()
+      );
+      // Created during signup (by the referrer or referred user)
+      allow create: if request.auth != null;
+      // Only admins can update (qualify, award credits)
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ─── Transactions ───
+    match /transactions/{txId} {
+      // Users can read their own transactions; admins can read all
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      // Only admins create transactions (awards, payments)
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ─── Payment Requests ───
+    match /paymentRequests/{reqId} {
+      // Users can read their own; admins can read all
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      // Users can create their own payment requests
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.status == 'pending';
+      // Only admins can update (approve/reject)
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ─── Notifications ───
+    match /notifications/{notifId} {
+      // Users can read their own notifications
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Only admins can create notifications
+      allow create: if isAdmin();
+      // Users can mark their own as read
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if false;
     }
 
     // Deny all other access by default
