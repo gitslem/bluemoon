@@ -203,6 +203,11 @@ export async function verifyPhoneOTP(otp, displayName, referralCode) {
     return result.user;
 }
 
+export async function signInWithPhone(otp) {
+    const result = await window.confirmationResult.confirm(otp);
+    return result.user;
+}
+
 export async function logOut() {
     await _authMod.signOut(auth);
     window.location.href = '/register.html';
