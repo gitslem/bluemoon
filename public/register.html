@@ -25,26 +25,25 @@
                 <p class="auth-subtitle">Sign up for our referral program and earn rewards</p>
 
                 <div id="referralNote" class="referral-note" style="display:none;">
-                    You were referred by a friend! Sign up to get <strong>₦500</strong> bonus on your first service.
+                    You were referred by a friend! Sign up to get <strong>&#8358;500</strong> bonus on your first service.
                 </div>
 
                 <div id="authError" class="auth-error"></div>
 
                 <!-- Sign Up / Sign In Tabs -->
                 <div class="auth-tabs" id="mainTabs">
-                    <button class="auth-tab active" data-tab="signup">Sign Up</button>
-                    <button class="auth-tab" data-tab="signin">Sign In</button>
+                    <button class="auth-tab active" data-tab="signup" type="button">Sign Up</button>
+                    <button class="auth-tab" data-tab="signin" type="button">Sign In</button>
                 </div>
 
-                <!-- Sign Up Form -->
-                <form id="signupForm" class="auth-form active">
+                <!-- Sign Up Form (Email) -->
+                <form id="emailSignupForm" class="auth-form active">
                     <div class="auth-tabs" style="margin-bottom:20px;">
                         <button type="button" class="auth-tab active" data-method="email">Email</button>
                         <button type="button" class="auth-tab" data-method="phone">Phone</button>
                     </div>
 
-                    <!-- Email Sign Up -->
-                    <div id="emailSignup" class="auth-method active">
+                    <div id="emailFields">
                         <div class="form-group">
                             <label class="form-label" for="signupName">Full Name</label>
                             <input class="form-input" type="text" id="signupName" placeholder="Adebayo Johnson" required>
@@ -69,35 +68,40 @@
                         </div>
                         <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;" id="emailSignupBtn">Create Account</button>
                     </div>
-
-                    <!-- Phone Sign Up -->
-                    <div id="phoneSignup" class="auth-method" style="display:none;">
-                        <div id="phoneStep1">
-                            <div class="form-group">
-                                <label class="form-label" for="phoneName">Full Name</label>
-                                <input class="form-input" type="text" id="phoneName" placeholder="Adebayo Johnson" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="phoneNumber">Phone Number</label>
-                                <input class="form-input" type="tel" id="phoneNumber" placeholder="+234 800 000 0000" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="phoneReferral">Referral Code</label>
-                                <input class="form-input" type="text" id="phoneReferral" placeholder="e.g. BM-A3X7K9" style="text-transform:uppercase;">
-                                <span class="form-hint">Have a referral code? Enter it to earn a bonus</span>
-                            </div>
-                            <button type="button" class="btn btn-primary" style="width:100%;padding:14px;" id="sendOtpBtn">Send Verification Code</button>
-                        </div>
-                        <div id="phoneStep2" style="display:none;">
-                            <div class="form-group">
-                                <label class="form-label" for="otpCode">Enter OTP Code</label>
-                                <input class="form-input" type="text" id="otpCode" placeholder="123456" maxlength="6" style="text-align:center;font-size:1.5rem;letter-spacing:8px;">
-                                <span class="form-hint">We sent a code to your phone number</span>
-                            </div>
-                            <button type="button" class="btn btn-primary" style="width:100%;padding:14px;" id="verifyOtpBtn">Verify &amp; Create Account</button>
-                        </div>
-                    </div>
                 </form>
+
+                <!-- Sign Up Form (Phone) — separate form to avoid validation conflicts -->
+                <div id="phoneSignupPanel" class="auth-form" style="display:none;">
+                    <div class="auth-tabs" style="margin-bottom:20px;">
+                        <button type="button" class="auth-tab" data-method="email">Email</button>
+                        <button type="button" class="auth-tab active" data-method="phone">Phone</button>
+                    </div>
+
+                    <div id="phoneStep1">
+                        <div class="form-group">
+                            <label class="form-label" for="phoneName">Full Name</label>
+                            <input class="form-input" type="text" id="phoneName" placeholder="Adebayo Johnson">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="phoneNumber">Phone Number</label>
+                            <input class="form-input" type="tel" id="phoneNumber" placeholder="+234 800 000 0000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="phoneReferral">Referral Code</label>
+                            <input class="form-input" type="text" id="phoneReferral" placeholder="e.g. BM-A3X7K9" style="text-transform:uppercase;">
+                            <span class="form-hint">Have a referral code? Enter it to earn a bonus</span>
+                        </div>
+                        <button type="button" class="btn btn-primary" style="width:100%;padding:14px;" id="sendOtpBtn">Send Verification Code</button>
+                    </div>
+                    <div id="phoneStep2" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label" for="otpCode">Enter OTP Code</label>
+                            <input class="form-input" type="text" id="otpCode" placeholder="123456" maxlength="6" style="text-align:center;font-size:1.5rem;letter-spacing:8px;">
+                            <span class="form-hint">We sent a code to your phone number</span>
+                        </div>
+                        <button type="button" class="btn btn-primary" style="width:100%;padding:14px;" id="verifyOtpBtn">Verify &amp; Create Account</button>
+                    </div>
+                </div>
 
                 <!-- Sign In Form -->
                 <form id="signinForm" class="auth-form">
@@ -130,9 +134,13 @@
 
         initAuth();
 
-        // Check if already logged in
+        // Flag to prevent onAuthChange redirect during signup
+        let isProcessingAuth = false;
+
         onAuthChange((user) => {
-            if (user) window.location.href = '/dashboard.html';
+            if (user && !isProcessingAuth) {
+                window.location.href = '/dashboard.html';
+            }
         });
 
         // Parse referral code from URL
@@ -144,24 +152,62 @@
             document.getElementById('referralNote').style.display = 'block';
         }
 
-        // Tab switching (Sign Up / Sign In)
+        // Elements
         const mainTabs = document.querySelectorAll('#mainTabs .auth-tab');
-        const signupForm = document.getElementById('signupForm');
+        const emailSignupForm = document.getElementById('emailSignupForm');
+        const phoneSignupPanel = document.getElementById('phoneSignupPanel');
         const signinForm = document.getElementById('signinForm');
         const authFooter = document.getElementById('authFooter');
+        const authError = document.getElementById('authError');
 
+        // Active view tracking
+        let currentView = 'signup'; // 'signup' or 'signin'
+        let currentMethod = 'email'; // 'email' or 'phone'
+
+        function updateView() {
+            // Hide all forms
+            emailSignupForm.classList.remove('active');
+            emailSignupForm.style.display = 'none';
+            phoneSignupPanel.classList.remove('active');
+            phoneSignupPanel.style.display = 'none';
+            signinForm.classList.remove('active');
+            signinForm.style.display = 'none';
+
+            if (currentView === 'signin') {
+                signinForm.classList.add('active');
+                signinForm.style.display = 'block';
+                authFooter.innerHTML = 'Don\'t have an account? <a href="#" id="switchToSignup">Sign up</a>';
+            } else if (currentMethod === 'email') {
+                emailSignupForm.classList.add('active');
+                emailSignupForm.style.display = 'block';
+                authFooter.innerHTML = 'Already have an account? <a href="#" id="switchToSignin">Sign in</a>';
+            } else {
+                phoneSignupPanel.classList.add('active');
+                phoneSignupPanel.style.display = 'block';
+                authFooter.innerHTML = 'Already have an account? <a href="#" id="switchToSignin">Sign in</a>';
+            }
+            bindFooterLinks();
+            hideError();
+        }
+
+        // Main tabs (Sign Up / Sign In)
         mainTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 mainTabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                const target = tab.dataset.tab;
-                signupForm.classList.toggle('active', target === 'signup');
-                signinForm.classList.toggle('active', target === 'signin');
-                authFooter.innerHTML = target === 'signup'
-                    ? 'Already have an account? <a href="#" id="switchToSignin">Sign in</a>'
-                    : 'Don\'t have an account? <a href="#" id="switchToSignup">Sign up</a>';
-                bindFooterLinks();
-                hideError();
+                currentView = tab.dataset.tab;
+                updateView();
+            });
+        });
+
+        // Method tabs (Email / Phone) — in both signup forms
+        document.querySelectorAll('[data-method]').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentMethod = tab.dataset.method;
+                currentView = 'signup';
+                mainTabs.forEach(t => t.classList.remove('active'));
+                mainTabs[0].classList.add('active');
+                updateView();
             });
         });
 
@@ -177,26 +223,7 @@
         }
         bindFooterLinks();
 
-        // Method tabs (Email / Phone)
-        const methodTabs = document.querySelectorAll('#signupForm > .auth-tabs .auth-tab');
-        const emailSignup = document.getElementById('emailSignup');
-        const phoneSignup = document.getElementById('phoneSignup');
-
-        methodTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                methodTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const method = tab.dataset.method;
-                emailSignup.style.display = method === 'email' ? 'block' : 'none';
-                emailSignup.classList.toggle('active', method === 'email');
-                phoneSignup.style.display = method === 'phone' ? 'block' : 'none';
-                phoneSignup.classList.toggle('active', method === 'phone');
-                hideError();
-            });
-        });
-
         // Error display
-        const authError = document.getElementById('authError');
         function showError(msg) {
             authError.textContent = msg;
             authError.classList.add('show');
@@ -214,12 +241,11 @@
             }
         }
 
-        // Email Sign Up
-        signupForm.addEventListener('submit', async (e) => {
+        // ── Email Sign Up ──
+        emailSignupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             hideError();
             const btn = document.getElementById('emailSignupBtn');
-            if (phoneSignup.classList.contains('active')) return;
 
             const name = document.getElementById('signupName').value.trim();
             const email = document.getElementById('signupEmail').value.trim();
@@ -233,14 +259,19 @@
             }
 
             setLoading(btn, true);
+            isProcessingAuth = true;
             try {
                 await signUpWithEmail(email, password, name, phone, referral);
+                // All Firestore writes are done — safe to redirect
                 window.location.href = '/dashboard.html';
             } catch (err) {
+                isProcessingAuth = false;
                 if (err.code === 'auth/email-already-in-use') {
                     showError('This email is already registered. Please sign in.');
                 } else if (err.code === 'auth/weak-password') {
                     showError('Password must be at least 6 characters.');
+                } else if (err.code === 'auth/invalid-email') {
+                    showError('Please enter a valid email address.');
                 } else {
                     showError(err.message || 'Sign up failed. Please try again.');
                 }
@@ -248,50 +279,60 @@
             }
         });
 
-        // Phone Sign Up — Send OTP
+        // ── Phone Sign Up — Send OTP ──
         document.getElementById('sendOtpBtn').addEventListener('click', async () => {
             hideError();
             const phone = document.getElementById('phoneNumber').value.trim();
             const name = document.getElementById('phoneName').value.trim();
-            if (!name || !phone) {
-                showError('Please enter your name and phone number.');
+            if (!name) {
+                showError('Please enter your full name.');
+                return;
+            }
+            if (!phone) {
+                showError('Please enter your phone number (e.g. +2348012345678).');
+                return;
+            }
+            if (!/^\+\d{10,15}$/.test(phone.replace(/\s/g, ''))) {
+                showError('Phone number must start with + followed by country code (e.g. +2348012345678).');
                 return;
             }
             const btn = document.getElementById('sendOtpBtn');
             setLoading(btn, true);
             try {
                 setupRecaptcha('recaptcha-container');
-                await sendPhoneOTP(phone);
+                await sendPhoneOTP(phone.replace(/\s/g, ''));
                 document.getElementById('phoneStep1').style.display = 'none';
                 document.getElementById('phoneStep2').style.display = 'block';
             } catch (err) {
-                showError(err.message || 'Failed to send verification code.');
+                showError(err.message || 'Failed to send verification code. Ensure phone number format is correct.');
             }
             setLoading(btn, false);
         });
 
-        // Phone Sign Up — Verify OTP
+        // ── Phone Sign Up — Verify OTP ──
         document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
             hideError();
             const otp = document.getElementById('otpCode').value.trim();
             const name = document.getElementById('phoneName').value.trim();
             const referral = document.getElementById('phoneReferral').value.trim().toUpperCase();
-            if (!otp) {
-                showError('Please enter the verification code.');
+            if (!otp || otp.length < 6) {
+                showError('Please enter the 6-digit verification code.');
                 return;
             }
             const btn = document.getElementById('verifyOtpBtn');
             setLoading(btn, true);
+            isProcessingAuth = true;
             try {
                 await verifyPhoneOTP(otp, name, referral);
                 window.location.href = '/dashboard.html';
             } catch (err) {
-                showError('Invalid code. Please try again.');
+                isProcessingAuth = false;
+                showError('Invalid verification code. Please try again.');
                 setLoading(btn, false);
             }
         });
 
-        // Sign In
+        // ── Sign In ──
         signinForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             hideError();

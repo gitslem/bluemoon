@@ -26,6 +26,16 @@ service cloud.firestore {
       allow read, delete: if false;
     }
 
+    // ─── Referral Codes (lookup table) ───
+    // Any authenticated user can read (for referral code validation)
+    // Created during signup alongside the user profile
+    match /referralCodes/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // ─── Users ───
     match /users/{userId} {
       // Users can read their own doc; admins can read all
@@ -47,7 +57,7 @@ service cloud.firestore {
         resource.data.referredUserId == request.auth.uid ||
         isAdmin()
       );
-      // Created during signup (by the referrer or referred user)
+      // Created during signup (by the referred user)
       allow create: if request.auth != null;
       // Only admins can update (qualify, award credits)
       allow update: if isAdmin();
@@ -84,8 +94,10 @@ service cloud.firestore {
 
     // ─── Notifications ───
     match /notifications/{notifId} {
-      // Users can read their own notifications
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Users can read their own notifications; admins can read all
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
       // Only admins can create notifications
       allow create: if isAdmin();
       // Users can mark their own as read

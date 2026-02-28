@@ -3,10 +3,11 @@
  * User dashboard logic: referrals, earnings, payment requests, profile
  */
 
-import { initAuth, onAuthChange, getUserData, logOut, formatNaira, getRewardAmount, getDbInstance } from './auth.js';
-import { doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, getDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+import { initAuth, onAuthChange, getUserData, logOut, formatNaira, getRewardAmount, esc } from './auth.js';
+import { doc, updateDoc, collection, query, where, orderBy, onSnapshot, addDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
 let db, currentUser, userData;
+let unsubReferrals, unsubTransactions, unsubUserDoc, unsubNotifications, unsubPayments;
 
 const NIGERIAN_BANKS = [
     'Access Bank', 'Citibank Nigeria', 'Ecobank Nigeria', 'Fidelity Bank',
@@ -45,7 +46,7 @@ export function initDashboard() {
         loadPaymentSection();
         loadProfile();
         document.getElementById('pageLoading').style.display = 'none';
-        document.getElementById('appContent').style.display = 'flex';
+        document.getElementById('appContent').style.display = 'block';
     });
 }
 
@@ -63,13 +64,11 @@ function setupNavigation() {
             link.classList.add('active');
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(link.dataset.section).classList.add('active');
-            // Close mobile sidebar
             document.querySelector('.sidebar')?.classList.remove('open');
             document.querySelector('.sidebar-overlay')?.classList.remove('open');
         });
     });
 
-    // Mobile menu
     document.getElementById('menuToggle')?.addEventListener('click', () => {
         document.querySelector('.sidebar').classList.toggle('open');
         document.querySelector('.sidebar-overlay').classList.toggle('open');
@@ -79,7 +78,6 @@ function setupNavigation() {
         document.querySelector('.sidebar-overlay').classList.remove('open');
     });
 
-    // Logout
     document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
         logOut();
@@ -99,19 +97,38 @@ function loadOverview() {
     const referralLink = `${window.location.origin}/register.html?ref=${userData.referralCode}`;
     document.getElementById('myReferralLink').textContent = referralLink;
 
-    // Copy button
     document.getElementById('copyCodeBtn').addEventListener('click', () => {
-        navigator.clipboard.writeText(userData.referralCode).then(() => showToast('Referral code copied!'));
+        navigator.clipboard.writeText(userData.referralCode)
+            .then(() => showToast('Referral code copied!'))
+            .catch(() => {
+                // Fallback for browsers without clipboard API
+                const input = document.createElement('input');
+                input.value = userData.referralCode;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('Referral code copied!');
+            });
     });
     document.getElementById('copyLinkBtn').addEventListener('click', () => {
-        navigator.clipboard.writeText(referralLink).then(() => showToast('Referral link copied!'));
+        navigator.clipboard.writeText(referralLink)
+            .then(() => showToast('Referral link copied!'))
+            .catch(() => {
+                const input = document.createElement('input');
+                input.value = referralLink;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('Referral link copied!');
+            });
     });
     document.getElementById('shareWhatsApp').addEventListener('click', () => {
-        const text = `Join BlueMoon Laundry and get ₦500 bonus on your first service! Use my referral code: ${userData.referralCode}\n\nSign up here: ${referralLink}`;
+        const text = `Join BlueMoon Laundry and get \u20A6500 bonus on your first service! Use my referral code: ${userData.referralCode}\n\nSign up here: ${referralLink}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     });
 
-    // Tier progress
     updateTierProgress();
 }
 
@@ -134,13 +151,15 @@ function updateTierProgress() {
 
 // ─── Referrals (real-time) ───
 function listenReferrals() {
+    if (unsubReferrals) unsubReferrals();
+
     const q = query(
         collection(db, 'referrals'),
         where('referrerId', '==', currentUser.uid),
         orderBy('createdAt', 'desc')
     );
 
-    onSnapshot(q, (snapshot) => {
+    unsubReferrals = onSnapshot(q, (snapshot) => {
         const tbody = document.getElementById('referralTableBody');
         if (snapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:32px;">No referrals yet. Share your code to start earning!</td></tr>';
@@ -156,33 +175,37 @@ function listenReferrals() {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${r.referredName || 'User'}</td>
-                <td>${r.referredEmail || r.referredPhone || '—'}</td>
-                <td><span class="badge badge-${r.status}">${r.status}</span></td>
-                <td>${r.serviceName || '—'}</td>
-                <td>${r.referrerReward ? formatNaira(r.referrerReward) : '—'}</td>
+                <td>${esc(r.referredName) || 'User'}</td>
+                <td>${esc(r.referredEmail || r.referredPhone) || '\u2014'}</td>
+                <td><span class="badge badge-${esc(r.status)}">${esc(r.status)}</span></td>
+                <td>${esc(r.serviceName) || '\u2014'}</td>
+                <td>${r.referrerReward ? formatNaira(r.referrerReward) : '\u2014'}</td>
             `;
             tbody.appendChild(tr);
         });
 
-        // Update stats in real-time
         document.getElementById('statReferrals').textContent = totalRefs;
         document.getElementById('statQualified').textContent = qualifiedRefs;
         userData.totalReferrals = totalRefs;
         userData.qualifiedReferrals = qualifiedRefs;
         updateTierProgress();
+    }, (err) => {
+        console.error('Referrals listener error:', err);
     });
 }
 
 // ─── Transactions (real-time) ───
 function listenTransactions() {
+    if (unsubTransactions) unsubTransactions();
+    if (unsubUserDoc) unsubUserDoc();
+
     const q = query(
         collection(db, 'transactions'),
         where('userId', '==', currentUser.uid),
         orderBy('createdAt', 'desc')
     );
 
-    onSnapshot(q, (snapshot) => {
+    unsubTransactions = onSnapshot(q, (snapshot) => {
         const tbody = document.getElementById('transactionTableBody');
         if (snapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:32px;">No transactions yet.</td></tr>';
@@ -190,13 +213,8 @@ function listenTransactions() {
         }
 
         tbody.innerHTML = '';
-        let totalEarnings = 0, balance = 0;
         snapshot.forEach(docSnap => {
             const t = docSnap.data();
-            if (t.type !== 'payment') totalEarnings += t.amount;
-            if (t.type === 'payment') balance -= t.amount;
-            else balance += t.amount;
-
             const tr = document.createElement('tr');
             const typeLabels = {
                 referral_reward: 'Referral Reward',
@@ -206,37 +224,42 @@ function listenTransactions() {
             };
             const isCredit = t.type !== 'payment';
             tr.innerHTML = `
-                <td>${typeLabels[t.type] || t.type}</td>
-                <td>${t.description || '—'}</td>
+                <td>${esc(typeLabels[t.type] || t.type)}</td>
+                <td>${esc(t.description) || '\u2014'}</td>
                 <td style="color:${isCredit ? 'var(--success)' : 'var(--danger)'}">${isCredit ? '+' : '-'}${formatNaira(t.amount)}</td>
                 <td>${new Date(t.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
             `;
             tbody.appendChild(tr);
         });
-
-        document.getElementById('statEarnings').textContent = formatNaira(totalEarnings);
+    }, (err) => {
+        console.error('Transactions listener error:', err);
     });
 
-    // Also listen to user doc for balance updates
-    onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
+    // Listen to user doc for balance updates
+    unsubUserDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
             userData = data;
             document.getElementById('statBalance').textContent = formatNaira(data.availableBalance);
             document.getElementById('statEarnings').textContent = formatNaira(data.totalEarnings);
+            renderHeader();
         }
+    }, (err) => {
+        console.error('User doc listener error:', err);
     });
 }
 
 // ─── Notifications (real-time) ───
 function listenNotifications() {
+    if (unsubNotifications) unsubNotifications();
+
     const q = query(
         collection(db, 'notifications'),
         where('userId', '==', currentUser.uid),
         orderBy('createdAt', 'desc')
     );
 
-    onSnapshot(q, (snapshot) => {
+    unsubNotifications = onSnapshot(q, (snapshot) => {
         const list = document.getElementById('notificationList');
         if (snapshot.empty) {
             list.innerHTML = '<div class="empty-state"><p>No updates yet.</p></div>';
@@ -251,18 +274,19 @@ function listenNotifications() {
             li.innerHTML = `
                 <span class="notification-dot ${n.read ? 'read' : ''}"></span>
                 <div>
-                    <div class="notification-text">${n.message}</div>
+                    <div class="notification-text">${esc(n.message)}</div>
                     <div class="notification-time">${new Date(n.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
             `;
             list.appendChild(li);
         });
+    }, (err) => {
+        console.error('Notifications listener error:', err);
     });
 }
 
 // ─── Payment Section ───
 function loadPaymentSection() {
-    // Populate bank dropdown
     const bankSelect = document.getElementById('bankName');
     NIGERIAN_BANKS.forEach(bank => {
         const opt = document.createElement('option');
@@ -271,14 +295,12 @@ function loadPaymentSection() {
         bankSelect.appendChild(opt);
     });
 
-    // Pre-fill bank details if saved
     if (userData.bankDetails) {
         bankSelect.value = userData.bankDetails.bankName || '';
         document.getElementById('accountNumber').value = userData.bankDetails.accountNumber || '';
         document.getElementById('accountName').value = userData.bankDetails.accountName || '';
     }
 
-    // Save bank details
     document.getElementById('saveBankBtn').addEventListener('click', async () => {
         const bankName = bankSelect.value;
         const accountNumber = document.getElementById('accountNumber').value.trim();
@@ -293,6 +315,8 @@ function loadPaymentSection() {
             return;
         }
 
+        const btn = document.getElementById('saveBankBtn');
+        btn.disabled = true;
         try {
             await updateDoc(doc(db, 'users', currentUser.uid), {
                 bankDetails: { bankName, accountNumber, accountName },
@@ -303,13 +327,13 @@ function loadPaymentSection() {
         } catch (err) {
             showToast('Failed to save bank details.', 'error');
         }
+        btn.disabled = false;
     });
 
-    // Request payment
     document.getElementById('requestPaymentBtn').addEventListener('click', async () => {
         const amount = parseInt(document.getElementById('paymentAmount').value);
         if (!amount || amount < 1000) {
-            showToast('Minimum withdrawal is ₦1,000.', 'error');
+            showToast('Minimum withdrawal is \u20A61,000.', 'error');
             return;
         }
         if (amount > (userData.availableBalance || 0)) {
@@ -343,24 +367,25 @@ function loadPaymentSection() {
 
             document.getElementById('paymentAmount').value = '';
             showToast('Payment request submitted! You will be credited shortly.');
-            loadPaymentRequests();
         } catch (err) {
             showToast('Failed to submit request.', 'error');
         }
         btn.disabled = false;
     });
 
-    loadPaymentRequests();
+    listenPaymentRequests();
 }
 
-async function loadPaymentRequests() {
+function listenPaymentRequests() {
+    if (unsubPayments) unsubPayments();
+
     const q = query(
         collection(db, 'paymentRequests'),
         where('userId', '==', currentUser.uid),
         orderBy('createdAt', 'desc')
     );
 
-    onSnapshot(q, (snapshot) => {
+    unsubPayments = onSnapshot(q, (snapshot) => {
         const tbody = document.getElementById('paymentRequestsBody');
         if (snapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:32px;">No payment requests yet.</td></tr>';
@@ -373,12 +398,14 @@ async function loadPaymentRequests() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${formatNaira(p.amount)}</td>
-                <td>${p.bankDetails.bankName} — ${p.bankDetails.accountNumber}</td>
-                <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                <td>${esc(p.bankDetails.bankName)} \u2014 ${esc(p.bankDetails.accountNumber)}</td>
+                <td><span class="badge badge-${esc(p.status)}">${esc(p.status)}</span></td>
                 <td>${new Date(p.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
             `;
             tbody.appendChild(tr);
         });
+    }, (err) => {
+        console.error('Payment requests listener error:', err);
     });
 }
 
@@ -392,6 +419,13 @@ function loadProfile() {
         const displayName = document.getElementById('profileName').value.trim();
         const phone = document.getElementById('profilePhone').value.trim();
 
+        if (!displayName) {
+            showToast('Name cannot be empty.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('saveProfileBtn');
+        btn.disabled = true;
         try {
             await updateDoc(doc(db, 'users', currentUser.uid), {
                 displayName,
@@ -405,6 +439,7 @@ function loadProfile() {
         } catch (err) {
             showToast('Failed to update profile.', 'error');
         }
+        btn.disabled = false;
     });
 }
 
