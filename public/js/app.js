@@ -1,81 +1,210 @@
 /**
  * BlueMoon — Coming Soon Application
- * Firebase Firestore + Analytics + UI Interactions
+ * UI-first approach: all forms and buttons work immediately.
+ * Firebase loads in background as an optional enhancement.
  */
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
-import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js';
-import firebaseConfig from './firebase-config.js';
-
 // ============================================
-// Firebase Initialization
+// Firebase State (loaded dynamically)
 // ============================================
 
-let app = null;
 let db = null;
 let analytics = null;
+let firebaseReady = false;
 
-function initFirebase() {
+async function loadFirebase() {
   try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    const configModule = await import('./firebase-config.js');
+    const config = configModule.default;
 
-    if (firebaseConfig.measurementId && firebaseConfig.measurementId !== 'YOUR_MEASUREMENT_ID') {
-      analytics = getAnalytics(app);
-      logEvent(analytics, 'page_view', {
-        page_title: document.title,
-        page_location: window.location.href
-      });
-    }
-  } catch (error) {
-    console.warn('Firebase initialization skipped:', error.message);
-  }
-}
-
-function isFirebaseReady() {
-  return db !== null && firebaseConfig.apiKey !== 'YOUR_API_KEY';
-}
-
-// ============================================
-// Email Subscriber — Firestore
-// ============================================
-
-async function saveSubscriber(email) {
-  if (!isFirebaseReady()) {
-    console.log('Subscriber (demo mode):', email);
-    return { success: true, demo: true };
-  }
-
-  try {
-    const normalizedEmail = email.toLowerCase().trim();
-    const subscriberRef = doc(db, 'subscribers', normalizedEmail);
-    await setDoc(subscriberRef, {
-      email: normalizedEmail,
-      subscribedAt: new Date().toISOString(),
-      source: 'coming_soon_page',
-      userAgent: navigator.userAgent
-    });
-
-    if (analytics) {
-      logEvent(analytics, 'sign_up', { method: 'email_waitlist' });
+    if (!config || !config.apiKey || config.apiKey === 'YOUR_API_KEY') {
+      console.warn('Firebase not configured.');
+      return;
     }
 
-    return { success: true };
+    const [appMod, storeMod] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js')
+    ]);
+
+    const app = appMod.initializeApp(config);
+    db = storeMod.getFirestore(app);
+    firebaseReady = true;
+
+    // Store Firestore functions for later use
+    window._fbDoc = storeMod.doc;
+    window._fbSetDoc = storeMod.setDoc;
+
+    // Analytics is optional — don't block on it
+    try {
+      if (config.measurementId && config.measurementId !== 'YOUR_MEASUREMENT_ID') {
+        const analyticsMod = await import('https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js');
+        analytics = analyticsMod.getAnalytics(app);
+        analyticsMod.logEvent(analytics, 'page_view', {
+          page_title: document.title,
+          page_location: window.location.href
+        });
+        window._fbLogEvent = analyticsMod.logEvent;
+      }
+    } catch (e) {
+      console.warn('Analytics unavailable:', e.message);
+    }
+
+    console.log('Firebase loaded successfully');
   } catch (error) {
-    console.error('Error saving subscriber:', error);
-    return { success: false, error: error.message };
+    console.warn('Firebase load failed (forms still work):', error.message);
   }
 }
-
-// ============================================
-// Analytics Helpers
-// ============================================
 
 function trackEvent(eventName, params) {
-  if (analytics) {
-    logEvent(analytics, eventName, params);
+  if (analytics && window._fbLogEvent) {
+    try { window._fbLogEvent(analytics, eventName, params); } catch (e) { /* ignore */ }
   }
+}
+
+// ============================================
+// Referral Code Generator
+// ============================================
+
+function generateReferralCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'BM-';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// ============================================
+// Promo Signup Form (Join Referral Program)
+// ============================================
+
+function initPromoForm() {
+  const form = document.getElementById('promoForm');
+  const successEl = document.getElementById('promoSuccess');
+  const errorEl = document.getElementById('promoError');
+  const refCodeDisplay = document.getElementById('promoRefCode');
+  if (!form || !successEl) return;
+
+  // Pre-fill referral code from URL
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refFromUrl = urlParams.get('ref');
+    if (refFromUrl) {
+      const refInput = document.getElementById('promoReferral');
+      if (refInput) refInput.value = refFromUrl.toUpperCase();
+    }
+  } catch (e) { /* ignore URL parse errors */ }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hidePromoError();
+
+    const name = (document.getElementById('promoName').value || '').trim();
+    const phone = (document.getElementById('promoPhone').value || '').trim();
+    const email = (document.getElementById('promoEmail').value || '').trim();
+    const referral = (document.getElementById('promoReferral').value || '').trim().toUpperCase();
+    const btn = document.getElementById('promoSubmitBtn');
+
+    if (!name) { showPromoError('Please enter your full name.'); return; }
+    if (!phone) { showPromoError('Please enter your phone number.'); return; }
+
+    // Show loading state
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Joining...';
+    btn.disabled = true;
+
+    // Generate referral code
+    const myRefCode = generateReferralCode();
+
+    // Try to save to Firebase (but don't block on it)
+    try {
+      if (firebaseReady && db && window._fbDoc && window._fbSetDoc) {
+        const signupRef = window._fbDoc(db, 'promoSignups', phone.replace(/\s/g, ''));
+        await window._fbSetDoc(signupRef, {
+          name: name,
+          phone: phone.replace(/\s/g, ''),
+          email: email ? email.toLowerCase() : '',
+          referralCode: myRefCode,
+          referredBy: referral || '',
+          source: 'homepage_promo',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      // Firebase save failed — that's OK, user still gets their code
+      console.warn('Firebase save failed:', err.message);
+    }
+
+    // Always show success — user gets their referral code regardless
+    form.style.display = 'none';
+    if (refCodeDisplay) refCodeDisplay.textContent = myRefCode;
+    successEl.classList.add('visible');
+    trackEvent('promo_signup_complete', { has_referral: !!referral });
+  });
+
+  function showPromoError(msg) {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('visible');
+    }
+  }
+
+  function hidePromoError() {
+    if (errorEl) errorEl.classList.remove('visible');
+  }
+}
+
+// ============================================
+// Email Notify Form
+// ============================================
+
+function initNotifyForm() {
+  const form = document.getElementById('notifyForm');
+  const successEl = document.getElementById('notifySuccess');
+  const errorEl = document.getElementById('notifyError');
+  if (!form || !successEl) return;
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const emailInput = form.querySelector('input[type="email"]');
+    const btn = form.querySelector('button');
+    if (!emailInput || !emailInput.value) return;
+
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    if (errorEl) errorEl.classList.remove('visible');
+
+    // Show loading state
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    // Try to save to Firebase
+    let saved = false;
+    try {
+      if (firebaseReady && db && window._fbDoc && window._fbSetDoc) {
+        const normalizedEmail = email.toLowerCase().trim();
+        const subscriberRef = window._fbDoc(db, 'subscribers', normalizedEmail);
+        await window._fbSetDoc(subscriberRef, {
+          email: normalizedEmail,
+          subscribedAt: new Date().toISOString(),
+          source: 'coming_soon_page',
+          userAgent: navigator.userAgent
+        });
+        saved = true;
+      }
+    } catch (err) {
+      console.warn('Subscriber save failed:', err.message);
+    }
+
+    // Always show success — even if Firebase wasn't available
+    form.style.display = 'none';
+    successEl.classList.add('visible');
+    trackEvent('waitlist_signup', { email_domain: email.split('@')[1] });
+  });
 }
 
 // ============================================
@@ -116,7 +245,7 @@ function initParticles() {
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    particles.forEach((p) => {
+    particles.forEach(function (p) {
       p.x += p.speedX;
       p.y += p.speedY;
       p.pulse += 0.01;
@@ -126,18 +255,18 @@ function initParticles() {
       if (p.y < 0) p.y = canvas.height;
       if (p.y > canvas.height) p.y = 0;
 
-      const dynamicOpacity = p.opacity * (0.7 + 0.3 * Math.sin(p.pulse));
+      var dynamicOpacity = p.opacity * (0.7 + 0.3 * Math.sin(p.pulse));
 
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(245, 165, 36, ${dynamicOpacity})`;
+      ctx.fillStyle = 'rgba(245, 165, 36, ' + dynamicOpacity + ')';
       ctx.fill();
     });
 
     animationId = requestAnimationFrame(draw);
   }
 
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', function () {
     cancelAnimationFrame(animationId);
     init();
     draw();
@@ -145,143 +274,6 @@ function initParticles() {
 
   init();
   draw();
-}
-
-// ============================================
-// Promo Signup Form (Inline Referral Join)
-// ============================================
-
-function generateReferralCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'BM-';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-function initPromoForm() {
-  const form = document.getElementById('promoForm');
-  const successEl = document.getElementById('promoSuccess');
-  const errorEl = document.getElementById('promoError');
-  const refCodeDisplay = document.getElementById('promoRefCode');
-  if (!form || !successEl) return;
-
-  // Pre-fill referral code from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const refFromUrl = urlParams.get('ref');
-  if (refFromUrl) {
-    const refInput = document.getElementById('promoReferral');
-    if (refInput) refInput.value = refFromUrl.toUpperCase();
-  }
-
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    if (errorEl) errorEl.classList.remove('visible');
-
-    const name = document.getElementById('promoName').value.trim();
-    const phone = document.getElementById('promoPhone').value.trim();
-    const email = document.getElementById('promoEmail').value.trim();
-    const referral = document.getElementById('promoReferral').value.trim().toUpperCase();
-    const btn = document.getElementById('promoSubmitBtn');
-
-    if (!name) {
-      showPromoError('Please enter your full name.');
-      return;
-    }
-    if (!phone) {
-      showPromoError('Please enter your phone number.');
-      return;
-    }
-
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:currentColor;border-radius:50%;animation:spin 0.6s linear infinite;"></span> Joining...';
-    btn.disabled = true;
-
-    try {
-      const myRefCode = generateReferralCode();
-
-      if (isFirebaseReady()) {
-        // Save to Firestore promoSignups collection
-        const signupRef = doc(db, 'promoSignups', phone.replace(/\s/g, ''));
-        await setDoc(signupRef, {
-          name,
-          phone: phone.replace(/\s/g, ''),
-          email: email.toLowerCase() || '',
-          referralCode: myRefCode,
-          referredBy: referral || '',
-          source: 'homepage_promo',
-          createdAt: new Date().toISOString()
-        });
-
-        if (analytics) {
-          logEvent(analytics, 'promo_signup', { method: 'inline_form' });
-        }
-      } else {
-        console.log('Promo signup (demo mode):', { name, phone, email, referral });
-      }
-
-      // Show success
-      form.style.display = 'none';
-      if (refCodeDisplay) refCodeDisplay.textContent = myRefCode;
-      successEl.classList.add('visible');
-      trackEvent('promo_signup_complete', { has_referral: !!referral });
-    } catch (err) {
-      console.error('Promo signup error:', err);
-      showPromoError('Something went wrong. Please try again or contact us on WhatsApp.');
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-    }
-  });
-
-  function showPromoError(msg) {
-    if (errorEl) {
-      errorEl.textContent = msg;
-      errorEl.classList.add('visible');
-    }
-  }
-}
-
-// ============================================
-// Notify Form
-// ============================================
-
-function initNotifyForm() {
-  const form = document.getElementById('notifyForm');
-  const success = document.getElementById('notifySuccess');
-  const errorEl = document.getElementById('notifyError');
-  if (!form || !success) return;
-
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    const emailInput = form.querySelector('input[type="email"]');
-    const btn = form.querySelector('button');
-    if (!emailInput || !emailInput.value) return;
-
-    const email = emailInput.value.trim();
-
-    if (errorEl) errorEl.classList.remove('visible');
-
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:currentColor;border-radius:50%;animation:spin 0.6s linear infinite;"></span> Saving...';
-    btn.disabled = true;
-
-    const result = await saveSubscriber(email);
-
-    if (result.success) {
-      form.style.display = 'none';
-      success.classList.add('visible');
-      trackEvent('waitlist_signup', { email_domain: email.split('@')[1] });
-    } else {
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-      if (errorEl) {
-        errorEl.textContent = 'Something went wrong. Please try again.';
-        errorEl.classList.add('visible');
-      }
-    }
-  });
 }
 
 // ============================================
@@ -315,28 +307,27 @@ function initHeaderScroll() {
 // ============================================
 
 function initClickTracking() {
-  document.querySelectorAll('.store-btn').forEach((btn) => {
+  document.querySelectorAll('.store-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      const store = this.querySelector('.store-btn-large')?.textContent || 'unknown';
-      trackEvent('store_button_click', { store });
+      var storeEl = this.querySelector('.store-btn-large');
+      trackEvent('store_button_click', { store: storeEl ? storeEl.textContent : 'unknown' });
     });
   });
 
-  document.querySelectorAll('.footer-social a').forEach((link) => {
+  document.querySelectorAll('.footer-social a').forEach(function (link) {
     link.addEventListener('click', function () {
-      const platform = this.getAttribute('aria-label') || 'unknown';
-      trackEvent('social_click', { platform });
+      trackEvent('social_click', { platform: this.getAttribute('aria-label') || 'unknown' });
     });
   });
 
-  const headerCta = document.querySelector('.header-cta');
+  var headerCta = document.querySelector('.header-cta');
   if (headerCta) {
     headerCta.addEventListener('click', function () {
       trackEvent('cta_click', { location: 'header' });
     });
   }
 
-  const whatsappFab = document.querySelector('.whatsapp-fab');
+  var whatsappFab = document.querySelector('.whatsapp-fab');
   if (whatsappFab) {
     whatsappFab.addEventListener('click', function () {
       trackEvent('whatsapp_click', { location: 'fab' });
@@ -345,14 +336,17 @@ function initClickTracking() {
 }
 
 // ============================================
-// Initialize
+// Initialize — UI first, Firebase second
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function () {
-  initFirebase();
+  // 1. Attach all UI event listeners IMMEDIATELY (no Firebase needed)
   initParticles();
   initPromoForm();
   initNotifyForm();
   initHeaderScroll();
   initClickTracking();
+
+  // 2. Load Firebase in the background (non-blocking)
+  loadFirebase();
 });
