@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueMoon — Dashboard</title>
+    <meta name="theme-color" content="#070B1A">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+    <!-- Loading -->
+    <div id="pageLoading" class="page-loading">
+        <span class="spinner"></span> Loading dashboard...
+    </div>
+
+    <!-- App Layout -->
+    <div id="appContent" style="display:none;">
+        <!-- Top Nav -->
+        <nav class="topnav">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="/" class="topnav-logo">
+                    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#F5A524" stroke-width="2.5"/><path d="M13 20c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7" stroke="#F5A524" stroke-width="2.5" stroke-linecap="round"/><circle cx="20" cy="20" r="2.5" fill="#F5A524"/></svg>
+                    BlueMoon
+                </a>
+            </div>
+            <div class="topnav-right">
+                <span class="topnav-user" id="userName"></span>
+                <button class="topnav-btn" id="logoutTopBtn">Sign Out</button>
+            </div>
+        </nav>
+
+        <div class="app-layout">
+            <!-- Sidebar -->
+            <div class="sidebar-overlay"></div>
+            <aside class="sidebar">
+                <ul class="sidebar-nav">
+                    <li><a href="#" data-section="sectionOverview" class="active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                        Overview
+                    </a></li>
+                    <li><a href="#" data-section="sectionReferrals">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        My Referrals
+                    </a></li>
+                    <li><a href="#" data-section="sectionEarnings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        Earnings
+                    </a></li>
+                    <li><a href="#" data-section="sectionPayment">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        Payment
+                    </a></li>
+                    <li><a href="#" data-section="sectionNotifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                        Updates
+                    </a></li>
+                    <li><a href="#" data-section="sectionProfile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Profile
+                    </a></li>
+                    <li id="adminLink" style="display:none;"><a href="/admin.html">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Admin Panel
+                    </a></li>
+                    <li><a href="#" id="logoutBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Sign Out
+                    </a></li>
+                </ul>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+
+                <!-- OVERVIEW -->
+                <div id="sectionOverview" class="section active">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Track your referrals and earnings in real-time</p>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Earnings</div>
+                            <div class="stat-card-value accent" id="statEarnings">₦0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Available Balance</div>
+                            <div class="stat-card-value success" id="statBalance">₦0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Referrals</div>
+                            <div class="stat-card-value" id="statReferrals">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Qualified</div>
+                            <div class="stat-card-value" id="statQualified">0</div>
+                            <div class="stat-card-sub">Used BlueMoon services</div>
+                        </div>
+                    </div>
+
+                    <!-- Referral Code Box -->
+                    <div class="referral-box">
+                        <div class="referral-box-label">Your Referral Code</div>
+                        <div class="referral-code" id="myReferralCode">—</div>
+                        <div class="referral-link" id="myReferralLink"></div>
+                        <div class="referral-actions">
+                            <button class="btn btn-primary btn-sm" id="copyCodeBtn">Copy Code</button>
+                            <button class="btn btn-secondary btn-sm" id="copyLinkBtn">Copy Link</button>
+                            <button class="btn btn-secondary btn-sm" id="shareWhatsApp" style="color:#25D366;border-color:#25D366;">Share on WhatsApp</button>
+                        </div>
+                    </div>
+
+                    <!-- Tier Progress -->
+                    <div class="tier-card">
+                        <div class="section-card-title">Reward Tier</div>
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px;">Earn more per referral as you grow. Currently earning <strong id="currentTierReward">₦2,000</strong> per referral.</p>
+                        <div class="tier-progress">
+                            <div class="tier-bar"><div class="tier-bar-fill" id="tierBarFill" style="width:0%"></div></div>
+                        </div>
+                        <div class="tier-steps">
+                            <div class="tier-step active" id="tierStep1">
+                                <span class="tier-step-dot"></span>
+                                ₦2,000/referral (1-4)
+                            </div>
+                            <div class="tier-step" id="tierStep2">
+                                <span class="tier-step-dot"></span>
+                                ₦3,000/referral (5+)
+                            </div>
+                            <div class="tier-step" id="tierStep3">
+                                <span class="tier-step-dot"></span>
+                                ₦10,000 bonus at 10
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REFERRALS -->
+                <div id="sectionReferrals" class="section">
+                    <h1 class="page-title">My Referrals</h1>
+                    <p class="page-subtitle">Track everyone you've referred to BlueMoon</p>
+
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <span class="section-card-title">Referral History</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Service Used</th>
+                                        <th>Reward</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="referralTableBody">
+                                    <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section-card" style="background:var(--accent-light);border-color:var(--border-accent);">
+                        <h3 style="font-size:0.95rem;color:var(--accent);margin-bottom:8px;">How It Works</h3>
+                        <ol style="color:var(--text-secondary);font-size:0.85rem;line-height:1.8;padding-left:20px;">
+                            <li>Share your referral code or link with friends</li>
+                            <li>They sign up using your code</li>
+                            <li>When they use a BlueMoon service, you earn <strong>₦2,000</strong></li>
+                            <li>After 5 qualified referrals, you earn <strong>₦3,000</strong> per referral</li>
+                            <li>At 10 referrals, you get a one-time <strong>₦10,000</strong> bonus!</li>
+                            <li>Your referred friend also gets <strong>₦500</strong> on their first service</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- EARNINGS -->
+                <div id="sectionEarnings" class="section">
+                    <h1 class="page-title">Earnings</h1>
+                    <p class="page-subtitle">Your complete transaction history</p>
+
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <span class="section-card-title">Transactions</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionTableBody">
+                                    <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAYMENT -->
+                <div id="sectionPayment" class="section">
+                    <h1 class="page-title">Payment</h1>
+                    <p class="page-subtitle">Withdraw your earnings to your bank account</p>
+
+                    <div class="section-card">
+                        <div class="section-card-title" style="margin-bottom:20px;">Bank Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="bankName">Bank Name</label>
+                                <select class="form-select" id="bankName">
+                                    <option value="">Select your bank</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="accountNumber">Account Number</label>
+                                <input class="form-input" type="text" id="accountNumber" placeholder="0123456789" maxlength="10" pattern="\d{10}">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountName">Account Name</label>
+                            <input class="form-input" type="text" id="accountName" placeholder="As shown on your bank account">
+                        </div>
+                        <button class="btn btn-secondary" id="saveBankBtn">Save Bank Details</button>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-card-title" style="margin-bottom:20px;">Request Withdrawal</div>
+                        <div class="form-group">
+                            <label class="form-label" for="paymentAmount">Amount (₦)</label>
+                            <input class="form-input" type="number" id="paymentAmount" placeholder="e.g. 5000" min="1000" step="100">
+                            <span class="form-hint">Minimum withdrawal: ₦1,000</span>
+                        </div>
+                        <button class="btn btn-primary" id="requestPaymentBtn">Request Payment</button>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-card-title" style="margin-bottom:20px;">Payment History</div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Amount</th>
+                                        <th>Bank</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentRequestsBody">
+                                    <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:32px;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NOTIFICATIONS -->
+                <div id="sectionNotifications" class="section">
+                    <h1 class="page-title">Updates</h1>
+                    <p class="page-subtitle">Admin updates on your referrals and services</p>
+
+                    <div class="section-card">
+                        <ul class="notification-list" id="notificationList">
+                            <div class="empty-state"><p>Loading...</p></div>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- PROFILE -->
+                <div id="sectionProfile" class="section">
+                    <h1 class="page-title">Profile</h1>
+                    <p class="page-subtitle">Manage your account details</p>
+
+                    <div class="section-card">
+                        <div class="section-card-title" style="margin-bottom:20px;">Personal Information</div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileName">Full Name</label>
+                            <input class="form-input" type="text" id="profileName">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="profileEmail">Email</label>
+                                <input class="form-input" type="email" id="profileEmail" disabled>
+                                <span class="form-hint">Email cannot be changed</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="profilePhone">Phone</label>
+                                <input class="form-input" type="tel" id="profilePhone">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initDashboard } from '/js/dashboard.js';
+        initDashboard();
+    </script>
+</body>
+</html>
